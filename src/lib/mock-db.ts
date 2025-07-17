@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   password: string;
+  role: 'user' | 'admin';
 }
 
 export interface Product {
@@ -17,10 +18,11 @@ export interface Product {
 // Data akan hilang jika server Next.js di-restart.
 export const mockUsers: User[] = [
   // Bisa menambahkan user default di sini untuk testing
-  { id: "1", name: "Default User", email: "user@example.com", password: "password123" },
+  { id: "1", name: "Default User", email: "user@example.com", password: "password123", role: 'user' },
+  { id: "2", name: "Admin User", email: "admin@example.com", password: "adminpassword", role: 'admin' },
 ];
 
-let nextUserId = 2;
+let nextUserId = 3;
 
 export const getNextUserId = (): string => {
     return String(nextUserId++);
@@ -34,8 +36,14 @@ export const findUserById = (id: string): User | undefined => {
     return mockUsers.find(user => user.id === id);
 };
 
-export const addUser = (user: User): void => {
-    mockUsers.push(user);
+export const addUser = (user: Omit<User, 'id' | 'role'>): User => { // Role default user saat registrasi
+    const newUser: User = {
+        id: getNextUserId(),
+        role: 'user', // Default role saat registrasi
+        ...user
+    };
+    mockUsers.push(newUser);
+    return newUser;
 };
 
 export const updateUser = (id: string, updatedData: Partial<Omit<User, 'id'>>): User | undefined => {
@@ -79,6 +87,41 @@ export const mockProducts: Product[] = [
   },
 ];
 
+let nextProductId = 5; // Mulai ID produk dari 5 atau angka unik lainnya
+
+export const getAllProducts = (): Product[] => {
+    return mockProducts;
+};
+
 export const findProductById = (id: string): Product | undefined => {
     return mockProducts.find(product => product.id === id);
+};
+
+export const addProduct = (product: Omit<Product, 'id'>): Product => {
+    const newProduct: Product = {
+        id: `prod${nextProductId++}`, // Generate ID baru
+        ...product
+    };
+    mockProducts.push(newProduct);
+    return newProduct;
+};
+
+export const updateProduct = (id: string, updatedData: Partial<Product>): Product | undefined => {
+    const productIndex = mockProducts.findIndex(product => product.id === id);
+    if (productIndex > -1) {
+        mockProducts[productIndex] = { ...mockProducts[productIndex], ...updatedData };
+        return mockProducts[productIndex];
+    }
+    return undefined;
+};
+
+export const deleteProduct = (id: string): boolean => {
+    const initialLength = mockProducts.length;
+    const filteredProducts = mockProducts.filter(product => product.id !== id);
+    // Jika ada perubahan panjang array, berarti produk ditemukan dan dihapus
+    if (filteredProducts.length < initialLength) {
+        mockProducts.splice(0, mockProducts.length, ...filteredProducts); // Memperbarui array asli
+        return true;
+    }
+    return false;
 };

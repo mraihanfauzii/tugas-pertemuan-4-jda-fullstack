@@ -6,6 +6,7 @@ import Image from "next/image";
 import { findProductById, Product } from "@/lib/mock-db";
 import { addToCart } from "@/lib/cart-utils";
 import Link from "next/link";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -15,14 +16,15 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
 
+  const { isAdmin } = useCurrentUser();
+
   useEffect(() => {
     if (productId) {
       const foundProduct = findProductById(productId);
       if (foundProduct) {
         setProduct(foundProduct);
       } else {
-        // Jika produk tidak ditemukan, redirect ke halaman 404 atau home
-        router.push("/not-found"); // Atau router.push('/')
+        router.push("/not-found");
       }
     }
   }, [productId, router]);
@@ -31,8 +33,12 @@ export default function ProductDetailPage() {
     if (product) {
       addToCart(product, quantity);
       setMessage(`${quantity} ${product.name} added to cart!`);
-      setTimeout(() => setMessage(null), 3000); // Hapus pesan setelah 3 detik
+      setTimeout(() => setMessage(null), 3000);
     }
+  };
+
+  const handleEditProduct = () => {
+    router.push(`/products?edit=${productId}`);
   };
 
   if (!product) {
@@ -62,30 +68,41 @@ export default function ProductDetailPage() {
             Rp{product.price.toLocaleString('id-ID')}
           </p>
 
-          <div className="flex items-center mb-6">
-            <label htmlFor="quantity" className="mr-4 text-lg font-medium">Quantity:</label>
-            <input
-              type="number"
-              id="quantity"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-20 p-2 border border-gray-300 rounded-md text-center"
-            />
-          </div>
+          {isAdmin ? ( // <<< Kondisional untuk Admin
+            <button
+              onClick={handleEditProduct}
+              className="bg-yellow-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-yellow-700 transition-colors"
+            >
+              Edit Product
+            </button>
+          ) : ( // <<< Untuk User (dan non-login)
+            <>
+              <div className="flex items-center mb-6">
+                <label htmlFor="quantity" className="mr-4 text-lg font-medium">Quantity:</label>
+                <input
+                  type="number"
+                  id="quantity"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 p-2 border border-gray-300 rounded-md text-center"
+                />
+              </div>
+              <button
+                onClick={handleAddToCart}
+                className="bg-green-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors"
+              >
+                Add to Cart
+              </button>
+            </>
+          )}
 
-          <button
-            onClick={handleAddToCart}
-            className="bg-green-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors"
-          >
-            Add to Cart
-          </button>
           {message && (
             <p className="mt-4 text-green-600 font-medium">{message}</p>
           )}
 
           <div className="mt-8">
-            <Link href="/" className="text-blue-500 hover:underline">
+            <Link href="/dashboard" className="text-blue-500 hover:underline">
               ← Back to Products
             </Link>
           </div>

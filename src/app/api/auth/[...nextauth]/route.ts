@@ -25,8 +25,13 @@ const handler = NextAuth({
         }
 
         if (userFound.password === credentials.password) {
-          console.log("User logged in:", userFound.email);
-          return { id: userFound.id, name: userFound.name, email: userFound.email };
+          console.log("User logged in:", userFound.email, "Role:", userFound.role);
+          return {
+            id: userFound.id,
+            name: userFound.name,
+            email: userFound.email,
+            role: userFound.role
+          };
         } else {
           console.log("Invalid password for user:", credentials.email);
           return null;
@@ -47,6 +52,7 @@ const handler = NextAuth({
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
+        token.role = (user as any).role; // <<< Tambahkan role ke JWT
       }
       return token;
     },
@@ -55,6 +61,7 @@ const handler = NextAuth({
         session.user.id = token.id as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
+        session.user.role = token.role as 'user' | 'admin'; // <<< Tambahkan role ke Session
       }
       return session;
     },

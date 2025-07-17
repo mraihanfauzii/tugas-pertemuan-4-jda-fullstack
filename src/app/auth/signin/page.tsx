@@ -16,11 +16,10 @@ export default function SignInPage() {
     e.preventDefault();
     setError(null);
 
-    // Dapatkan callbackUrl dari URL jika ada (misalnya dari middleware)
     const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
     const result = await signIn("credentials", {
-      redirect: false, // Tetap false agar kita bisa menangani redirect secara manual
+      redirect: false,
       email,
       password,
     });
@@ -28,7 +27,6 @@ export default function SignInPage() {
     if (result?.error) {
       setError("Invalid email or password.");
     } else {
-      // Jika login berhasil, redirect secara eksplisit menggunakan router.push
       router.push(callbackUrl);
     }
   };
@@ -74,8 +72,19 @@ export default function SignInPage() {
             </button>
           </div>
         </form>
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+        <div className="mt-6 text-center text-sm text-gray-600 border-t pt-4">
+          <p className="font-semibold mb-2">Akun :</p>
+          <p>
+            Admin Credentials: <br/>
+            Email: <span className="font-medium text-blue-700">admin@example.com</span> <br/>
+            Password: <span className="font-medium text-blue-700">adminpassword</span>
+          </p>
+          <p className="mt-2">
+            User Credentials: <br/>
+            Email: <span className="font-medium text-green-700">user@example.com</span> <br/>
+            Password: <span className="font-medium text-green-700">password123</span>
+          </p>
+          <p className="mt-4">
             Don't have an account?{" "}
             <Link href="/auth/register" className="text-blue-500 hover:underline">
               Register here
