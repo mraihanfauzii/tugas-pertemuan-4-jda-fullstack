@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { findProductById, updateProduct, deleteProduct, Product } from '@/lib/mock-db';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from "@/lib/authOptions";
 
 // GET: Mengambil satu produk berdasarkan ID (Bisa diakses siapa saja)
 export async function GET(

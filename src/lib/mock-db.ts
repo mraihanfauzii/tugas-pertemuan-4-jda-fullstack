@@ -6,6 +6,13 @@ export interface User {
   role: 'user' | 'admin';
 }
 
+export type UserUpdate = {
+  name?: string;
+  email?: string;
+  password?: string;
+}
+
+
 export interface Product {
   id: string;
   name: string;
@@ -46,14 +53,15 @@ export const addUser = (user: Omit<User, 'id' | 'role'>): User => { // Role defa
     return newUser;
 };
 
-export const updateUser = (id: string, updatedData: Partial<Omit<User, 'id'>>): User | undefined => {
-    const userIndex = mockUsers.findIndex(user => user.id === id);
-    if (userIndex > -1) {
-        mockUsers[userIndex] = { ...mockUsers[userIndex], ...updatedData };
-        return mockUsers[userIndex];
+export function updateUser(userId: string, updatedData: UserUpdate): User | null {
+    const userIndex = mockUsers.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+        return null;
     }
-    return undefined;
-};
+    const updatedUser = { ...mockUsers[userIndex], ...updatedData };
+    mockUsers[userIndex] = updatedUser;
+    return updatedUser;
+}
 
 // Data Produk Dummy
 export const mockProducts: Product[] = [

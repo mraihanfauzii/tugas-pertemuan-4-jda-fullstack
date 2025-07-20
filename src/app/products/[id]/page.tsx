@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { findProductById, Product } from "@/lib/mock-db";
-import { addToCart } from "@/lib/cart-utils";
+import { Product } from "@/lib/mock-db";
 import Link from "next/link";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { getCart, saveCart, CartItem } from '@/lib/cart-storage';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -16,32 +16,62 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
 
-  const { isAdmin } = useCurrentUser();
+  const { user, isAdmin, isAuthenticated, isLoading } = useCurrentUser();
+  const userId = user?.id; // Dapatkan ID pengguna dari hook useCurrentUser
 
   useEffect(() => {
     if (productId) {
-      const foundProduct = findProductById(productId);
-      if (foundProduct) {
-        setProduct(foundProduct);
-      } else {
-        router.push("/not-found");
-      }
+      // Mengambil produk dari API endpoint, bukan mock-db langsung di client
+      const fetchProduct = async () => {
+        try {
+          const res = await fetch(`/api/products/${productId}`);
+          if (!res.ok) {
+            console.error(`Failed to fetch product with ID ${productId}:`, res.statusText);
+            router.push("/not-found"); // Redirect jika produk tidak ditemukan atau ada error
+            return;
+          }
+          const data: Product = await res.json();
+          setProduct(data);
+        } catch (error) {
+          console.error("Error fetching product:", error);
+          router.push("/not-found");
+        }
+      };
+      fetchProduct();
     }
   }, [productId, router]);
 
   const handleAddToCart = () => {
+    if (!isAuthenticated || !userId) { // Jika user belum login atau tidak ada userId
+      router.push('/auth/signin'); // Arahkan ke halaman login
+      return;
+    }
+
     if (product) {
-      addToCart(product, quantity);
+      const currentCart = getCart(userId);
+      const existingItem = currentCart.find(item => item.id === product.id);
+
+      let updatedCart: CartItem[];
+      if (existingItem) {
+        updatedCart = currentCart.map(item =>
+          item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+        );
+      } else {
+        updatedCart = [...currentCart, { ...product, quantity: quantity }];
+      }
+      saveCart(userId, updatedCart);
       setMessage(`${quantity} ${product.name} added to cart!`);
       setTimeout(() => setMessage(null), 3000);
     }
   };
 
   const handleEditProduct = () => {
-    router.push(`/products?edit=${productId}`);
+    if (isAdmin) { // Pastikan hanya admin yang bisa mengedit
+        router.push(`/products?edit=${productId}`);
+    }
   };
 
-  if (!product) {
+  if (isLoading || !product) { // Tambahkan isLoading ke kondisi loading
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <p className="text-xl">Loading product details...</p>
@@ -68,14 +98,14 @@ export default function ProductDetailPage() {
             Rp{product.price.toLocaleString('id-ID')}
           </p>
 
-          {isAdmin ? ( // <<< Kondisional untuk Admin
+          {isAdmin ? (
             <button
               onClick={handleEditProduct}
               className="bg-yellow-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-yellow-700 transition-colors"
             >
               Edit Product
             </button>
-          ) : ( // <<< Untuk User (dan non-login)
+          ) : (
             <>
               <div className="flex items-center mb-6">
                 <label htmlFor="quantity" className="mr-4 text-lg font-medium">Quantity:</label>
@@ -90,7 +120,13 @@ export default function ProductDetailPage() {
               </div>
               <button
                 onClick={handleAddToCart}
-                className="bg-green-600 text-white py-3 px-6 rounded-lg text-lg font-semibold hover:bg-green-700 transition-colors"
+                className={`${
+                  isAuthenticated // Cek isAuthenticated dari useCurrentUser
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gray-400 cursor-not-allowed"
+                } text-white py-3 px-6 rounded-lg text-lg font-semibold transition-colors`}
+                title={isAuthenticated ? "" : "Login to add to cart"}
+                disabled={!isAuthenticated} // Disable tombol jika belum login
               >
                 Add to Cart
               </button>
