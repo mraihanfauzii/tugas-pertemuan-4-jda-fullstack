@@ -13,28 +13,36 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const productId = params.id as string;
   const [product, setProduct] = useState<Product | null>(null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
 
-  const { user, isAdmin, isAuthenticated, isLoading } = useCurrentUser();
-  const userId = user?.id; // Dapatkan ID pengguna dari hook useCurrentUser
+  const { user, isAdmin, isAuthenticated, isLoading: isLoadingUser } = useCurrentUser();
+  const userId = user?.id;
 
   useEffect(() => {
     if (productId) {
-      // Mengambil produk dari API endpoint, bukan mock-db langsung di client
       const fetchProduct = async () => {
+        setIsLoadingProduct(true);
         try {
           const res = await fetch(`/api/products/${productId}`);
           if (!res.ok) {
             console.error(`Failed to fetch product with ID ${productId}:`, res.statusText);
-            router.push("/not-found"); // Redirect jika produk tidak ditemukan atau ada error
+            router.push("/not-found");
             return;
           }
-          const data: Product = await res.json();
-          setProduct(data);
+          const responseData = await res.json();
+          if (responseData.status === 'success' && responseData.data) {
+            setProduct(responseData.data);
+          } else {
+            // Jika status bukan success atau tidak ada data
+            throw new Error(responseData.message || "Failed to get product data.");
+          }
         } catch (error) {
           console.error("Error fetching product:", error);
           router.push("/not-found");
+        } finally {
+          setIsLoadingProduct(false);
         }
       };
       fetchProduct();
@@ -42,13 +50,14 @@ export default function ProductDetailPage() {
   }, [productId, router]);
 
   const handleAddToCart = () => {
-    if (!isAuthenticated || !userId) { // Jika user belum login atau tidak ada userId
-      router.push('/auth/signin'); // Arahkan ke halaman login
+    // Pastikan user terautentikasi dan memiliki userId sebelum menambahkan ke keranjang
+    if (!isAuthenticated || !userId) {
+      router.push('/auth/signin');
       return;
     }
 
     if (product) {
-      const currentCart = getCart(userId);
+      const currentCart = getCart(userId); // Menggunakan userId dari sesi
       const existingItem = currentCart.find(item => item.id === product.id);
 
       let updatedCart: CartItem[];
@@ -59,23 +68,34 @@ export default function ProductDetailPage() {
       } else {
         updatedCart = [...currentCart, { ...product, quantity: quantity }];
       }
-      saveCart(userId, updatedCart);
+      saveCart(userId, updatedCart); // Menyimpan dengan userId
       setMessage(`${quantity} ${product.name} added to cart!`);
       setTimeout(() => setMessage(null), 3000);
     }
   };
 
   const handleEditProduct = () => {
-    if (isAdmin) { // Pastikan hanya admin yang bisa mengedit
+    if (isAdmin) {
         router.push(`/products?edit=${productId}`);
     }
   };
 
-  if (isLoading || !product) { // Tambahkan isLoading ke kondisi loading
+  if (isLoadingUser || isLoadingProduct) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <p className="text-xl">Loading product details...</p>
       </div>
+    );
+  }
+
+  if (!product) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            <p className="text-xl">Product not found.</p>
+            <Link href="/dashboard" className="text-blue-500 hover:underline ml-4">
+              ← Back to Products
+            </Link>
+        </div>
     );
   }
 
@@ -121,12 +141,12 @@ export default function ProductDetailPage() {
               <button
                 onClick={handleAddToCart}
                 className={`${
-                  isAuthenticated // Cek isAuthenticated dari useCurrentUser
+                  isAuthenticated
                     ? "bg-green-600 hover:bg-green-700"
                     : "bg-gray-400 cursor-not-allowed"
                 } text-white py-3 px-6 rounded-lg text-lg font-semibold transition-colors`}
                 title={isAuthenticated ? "" : "Login to add to cart"}
-                disabled={!isAuthenticated} // Disable tombol jika belum login
+                disabled={!isAuthenticated}
               >
                 Add to Cart
               </button>

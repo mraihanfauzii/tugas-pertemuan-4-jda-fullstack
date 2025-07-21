@@ -8,18 +8,79 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [globalMessage, setGlobalMessage] = useState<string | null>(null); // Untuk pesan sukses/error dari backend
+  const [isSuccessMessage, setIsSuccessMessage] = useState(false); // Untuk menentukan warna pesan
+
+  // Live validation errors
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
   const router = useRouter();
+
+  // Validation functions
+  const validateName = (name: string) => {
+    if (!name.trim()) {
+      return "Name is required.";
+    }
+    return null;
+  };
+
+  const validateEmail = (email: string) => {
+    if (!email) {
+      return "Email is required.";
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return "Invalid email format.";
+    }
+    return null;
+  };
+
+  const validatePassword = (password: string) => {
+    if (!password) {
+      return "Password is required.";
+    }
+    if (password.length < 8) {
+      return "Password must be at least 8 characters.";
+    }
+    return null;
+  };
+
+  // Handlers for input changes and blur events
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setName(newName);
+    setNameError(validateName(newName));
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    setEmailError(validateEmail(newEmail));
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+    setPasswordError(validatePassword(newPassword));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+    setGlobalMessage(null);
 
-    // Validasi sederhana di sisi klien
-    if (!name || !email || !password) {
-      setError("All fields are required.");
+    // Final validation before submission
+    const finalNameError = validateName(name);
+    const finalEmailError = validateEmail(email);
+    const finalPasswordError = validatePassword(password);
+
+    if (finalNameError || finalEmailError || finalPasswordError) {
+      setNameError(finalNameError);
+      setEmailError(finalEmailError);
+      setPasswordError(finalPasswordError);
+      setGlobalMessage("Please correct the errors above.");
+      setIsSuccessMessage(false);
       return;
     }
 
@@ -33,87 +94,121 @@ export default function RegisterPage() {
       });
 
       if (res.ok) {
-        setSuccess("Registration successful! Redirecting to login...");
+        setGlobalMessage("Registration successful! Redirecting to login page...");
+        setIsSuccessMessage(true);
         setName("");
         setEmail("");
         setPassword("");
-        // Redirect ke halaman login setelah 2 detik
+        // Redirect ke halaman login setelah registrasi berhasil
         setTimeout(() => {
           router.push("/auth/signin");
-        }, 2000);
+        }, 1500);
       } else {
-        const data = await res.json();
-        setError(data.message || "Registration failed.");
+        const errorData = await res.json();
+        setGlobalMessage(errorData.message || "Registration failed.");
+        setIsSuccessMessage(false);
       }
-    } catch (err) {
-      console.error("Registration error:", err);
-      setError("An unexpected error occurred. Please try again.");
+    } catch (error) {
+      console.error("Registration error:", error);
+      setGlobalMessage("An unexpected error occurred during registration.");
+      setIsSuccessMessage(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-6 text-center">Register</h1>
-        {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
-        {success && <p className="text-green-500 text-sm mb-4 text-center">{success}</p>}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-gray-700 text-sm font-bold mb-2">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
+        <h2 className="text-3xl font-extrabold text-gray-900 text-center mb-6">
+          Register
+        </h2>
+        {globalMessage && (
+          <div
+            className={`p-3 rounded-md mb-4 text-center ${
+              isSuccessMessage ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+            }`}
+          >
+            {globalMessage}
+          </div>
+        )}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700"
+            >
               Name
             </label>
             <input
-              type="text"
               id="name"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              name="name"
+              type="text"
+              autoComplete="name"
               required
+              className={`mt-1 block w-full px-3 py-2 border ${nameError ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+              value={name}
+              onChange={handleNameChange}
+              onBlur={() => setNameError(validateName(name))}
             />
+            {nameError && <p className="text-red-500 text-xs italic mt-1">{nameError}</p>}
           </div>
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">
-              Email
+          <div>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Email address
             </label>
             <input
-              type="email"
               id="email"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              name="email"
+              type="email"
+              autoComplete="email"
               required
+              className={`mt-1 block w-full px-3 py-2 border ${emailError ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+              value={email}
+              onChange={handleEmailChange}
+              onBlur={() => setEmailError(validateEmail(email))}
             />
+            {emailError && <p className="text-red-500 text-xs italic mt-1">{emailError}</p>}
           </div>
-          <div className="mb-6">
-            <label htmlFor="password" className="block text-gray-700 text-sm font-bold mb-2">
+          <div>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
               Password
             </label>
             <input
-              type="password"
               id="password"
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              name="password"
+              type="password"
+              autoComplete="new-password"
               required
+              className={`mt-1 block w-full px-3 py-2 border ${passwordError ? 'border-red-500' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+              value={password}
+              onChange={handlePasswordChange}
+              onBlur={() => setPasswordError(validatePassword(password))}
             />
+            {passwordError && <p className="text-red-500 text-xs italic mt-1">{passwordError}</p>}
           </div>
-          <div className="flex items-center justify-between">
+          <div>
             <button
               type="submit"
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Register
             </button>
           </div>
         </form>
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Already have an account?{" "}
-            <Link href="/auth/signin" className="text-blue-500 hover:underline">
-              Sign In
-            </Link>
-          </p>
-        </div>
+        <p className="mt-6 text-center text-sm text-gray-600">
+          Already have an account?{" "}
+          <Link
+            href="/auth/signin"
+            className="font-medium text-blue-600 hover:text-blue-500"
+          >
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   );
